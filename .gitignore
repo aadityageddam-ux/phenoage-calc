@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Secure storage - CRITICAL: DO NOT COMMIT THESE FILES
+.env                           # Contains encryption keys
+patient_data/*.xlsx            # Encrypted patient data files
+patient_data/*.csv             # Audit log files (may contain hashed IDs)
+
+# NHANES data (large files, downloaded separately)
+nhanes_data/*.XPT
+nhanes_data/*.DAT
+nhanes_cache/
+
+# Outputs
+outputs/
+*.png
+*.jpg
+*.pdf

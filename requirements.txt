@@ -1,0 +1,25 @@
+# PhenoAge Engine V2 - Dependencies
+# Minimal dependencies for scientifically correct PhenoAge implementation
+
+# Core numerical computing
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+
+# Survival analysis (Cox regression for Hazard Ratio validation)
+lifelines>=0.27.0
+
+# Testing
+pytest>=7.4.0
+
+# Visualization (optional - for generating plots in reports)
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Secure storage (Phase 2: Encryption and audit logging)
+cryptography>=41.0.0        # AES-256 Fernet encryption
+python-dotenv>=1.0.0        # Environment variable management for encryption keys
+openpyxl>=3.1.2             # Excel file handling for encrypted storage
+
+# Web UI (Phase 3: Streamlit interface)
+streamlit>=1.28.0
