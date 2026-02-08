@@ -345,6 +345,31 @@ class SecureStorage:
             print(f"Warning: Failed to decrypt data for patient {patient_id}. Data may be corrupted.")
             return None
 
+    def load_patient_history(self, patient_id: int) -> List[Dict[str, Any]]:
+        """
+        Load and decrypt all records for a patient, sorted by timestamp ascending.
+
+        Returns:
+            List of complete patient record dicts, oldest first. Empty list if none found.
+        """
+        hashed_id = self._hash_patient_id(patient_id)
+        df = self._load_storage_file()
+        matching_rows = df[df['hashed_patient_id'] == hashed_id].copy()
+
+        if matching_rows.empty:
+            return []
+
+        matching_rows = matching_rows.sort_values('timestamp')
+
+        records = []
+        for _, row in matching_rows.iterrows():
+            try:
+                records.append(self._decrypt_data(row['encrypted_data']))
+            except InvalidToken:
+                continue
+
+        return records
+
     def delete_patient_data(self, patient_id: int) -> bool:
         """
         Delete all records for a patient from storage.

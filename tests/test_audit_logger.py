@@ -18,6 +18,7 @@ import pytest
 import tempfile
 from pathlib import Path
 import csv
+import re
 from datetime import datetime
 
 from storage import AuditLogger, AuditLoggerConfig
@@ -163,11 +164,14 @@ class TestPHIProtection:
         # Read raw CSV content
         csv_content = audit_logger.config.log_path.read_text()
 
-        # Verify NO biomarker values appear
-        assert '4.5' not in csv_content  # albumin value
-        assert '0.9' not in csv_content  # creatinine value
-        assert '95.0' not in csv_content  # glucose value
-        assert '0.1' not in csv_content  # crp value
+        # Verify NO biomarker values appear as discrete CSV field values.
+        # Use regex with field-boundary anchors to avoid false positives from
+        # substring matches inside timestamps (e.g. '0.1' inside '10.119140').
+        _field = r'(?:^|,){value}(?:,|\n|$)'
+        assert not re.search(_field.format(value=r'4\.5'), csv_content, re.MULTILINE)   # albumin
+        assert not re.search(_field.format(value=r'0\.9'), csv_content, re.MULTILINE)   # creatinine
+        assert not re.search(_field.format(value=r'95\.0'), csv_content, re.MULTILINE)  # glucose
+        assert not re.search(_field.format(value=r'0\.1'), csv_content, re.MULTILINE)   # crp
         assert 'albumin' not in csv_content
         assert 'creatinine' not in csv_content
         assert 'glucose' not in csv_content

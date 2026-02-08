@@ -78,13 +78,50 @@ with st.sidebar:
         st.success("Secure storage active")
 
     st.divider()
+    st.subheader("Delete My Data")
+    with st.expander("Right to deletion (HIPAA § 164.526)"):
+        del_patient_id = st.number_input(
+            "Patient ID to delete", min_value=1, value=1, step=1,
+            key="del_patient_id",
+        )
+        del_confirm = st.checkbox(
+            "I confirm I want to permanently delete all records for this Patient ID",
+            key="del_confirm",
+        )
+        if st.button(
+            "Delete My Data",
+            disabled=not del_confirm or not st.session_state["storage_available"],
+            type="secondary",
+        ):
+            try:
+                # Load age before deletion so audit log is meaningful
+                age_for_audit = 0.0
+                record = st.session_state["storage"].load_patient_data(int(del_patient_id))
+                if record is not None:
+                    age_for_audit = record.get("calculation_results", {}).get(
+                        "chronological_age", 0.0
+                    )
+
+                deleted = st.session_state["storage"].delete_patient_data(int(del_patient_id))
+                if deleted:
+                    st.session_state["audit"].log_deletion(
+                        patient_id=int(del_patient_id),
+                        age=age_for_audit,
+                    )
+                    st.success(f"All records for patient {int(del_patient_id)} deleted.")
+                else:
+                    st.warning(f"No records found for patient {int(del_patient_id)}.")
+            except Exception as exc:
+                st.error(f"Deletion failed: {exc}")
+
+    st.divider()
     st.caption("Results are stored in `patient_data/` (encrypted Excel + audit log).")
 
 # ---------------------------------------------------------------------------
 # Main tab layout
 # ---------------------------------------------------------------------------
 
-tab1, tab2 = st.tabs(["Clinical Calculator", "Population Analysis"])
+tab1, tab2, tab3, tab4 = st.tabs(["Clinical Calculator", "Population Analysis", "Benchmarking", "Your Progress"])
 
 with tab1:
     from ui.tab1_calculator import render_tab1
@@ -98,3 +135,11 @@ with tab1:
 with tab2:
     from ui.tab2_population import render_tab2
     render_tab2()
+
+with tab3:
+    from ui.tab3_benchmarking import render_tab3
+    render_tab3()
+
+with tab4:
+    from ui.tab4_progress import render_tab4
+    render_tab4()
