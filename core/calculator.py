@@ -152,12 +152,10 @@ class PhenoAgeCalculatorV2:
         # Convert CRP: mg/dL -> mg/L
         crp_mg_L = crp * self.crp_conversion
 
-        # Handle CRP <= 0
+        # Guard against CRP <= 0 before log transformation
+        # Uses +0.001 floor (instead of raising) to prevent ln(0) = NaN/math error
         if crp_mg_L <= 0:
-            raise ValueError(
-                f"CRP must be > 0 for log transformation. "
-                f"Got CRP = {crp} mg/dL -> {crp_mg_L} mg/L."
-            )
+            crp_mg_L = 0.001
 
         # Natural log transformation of CRP
         log_crp = np.log(crp_mg_L)
@@ -292,14 +290,11 @@ class PhenoAgeCalculatorV2:
         # Convert CRP: mg/dL -> mg/L
         df_result['crp_mg_L'] = df_result['crp'] * self.crp_conversion
 
-        # Check for invalid CRP values
+        # Guard against CRP <= 0 before log transformation (floor to prevent NaN)
         invalid_crp = (df_result['crp_mg_L'] <= 0).sum()
         if invalid_crp > 0:
-            raise ValueError(
-                f"Found {invalid_crp} participants with CRP <= 0. "
-                f"Cannot take log of zero/negative values. "
-                f"Please remove these participants before calculation."
-            )
+            print(f"Warning: {invalid_crp} participants have CRP <= 0, clamped to 0.001 mg/L")
+        df_result['crp_mg_L'] = df_result['crp_mg_L'].clip(lower=0.001)
 
         df_result['log_crp'] = np.log(df_result['crp_mg_L'])
 
