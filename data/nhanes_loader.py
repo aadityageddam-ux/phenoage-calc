@@ -13,11 +13,14 @@ Author: Claude Code
 Date: 2026-02-07
 """
 
+import logging
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Optional
 from core.constants import NHANES_VARIABLES, REQUIRED_BIOMARKERS, EXPECTED_COHORT_SIZES
+
+logger = logging.getLogger(__name__)
 
 
 class NHANESLoaderV2:
@@ -50,8 +53,7 @@ class NHANESLoaderV2:
         # Verify files exist
         missing_files = [name for name, path in self.files.items() if not path.exists()]
         if missing_files:
-            print(f"WARNING: Warning: Missing files: {missing_files}")
-            print(f"   Looking in: {self.data_dir}")
+            logger.warning("Missing files: %s (looking in: %s)", missing_files, self.data_dir)
 
     def load_and_merge(self) -> pd.DataFrame:
         """
@@ -60,31 +62,27 @@ class NHANESLoaderV2:
         Returns:
             DataFrame with standardized column names (seqn, age, albumin, etc.)
         """
-        print("\n" + "="*70)
-        print("NHANES 1999-2000 Data Loader")
-        print("="*70)
+        logger.info("NHANES 1999-2000 Data Loader — starting")
 
         # Load each file
-        print("\n[1/4] Loading demographics (DEMO.xpt)...")
+        logger.info("[1/4] Loading demographics (DEMO.xpt)")
         demo = pd.read_sas(self.files['demographics'], format='xport')
-        print(f"      Loaded {len(demo)} participants")
+        logger.info("  Loaded %d participants", len(demo))
 
-        print("\n[2/4] Loading biochemistry (LAB18.xpt) - Albumin, Glucose, Creatinine, ALP...")
+        logger.info("[2/4] Loading biochemistry (LAB18.xpt)")
         lab18 = pd.read_sas(self.files['biochemistry'], format='xport')
-        print(f"      Loaded {len(lab18)} records")
+        logger.info("  Loaded %d records", len(lab18))
 
-        print("\n[3/4] Loading C-Reactive Protein (LAB11.xpt)...")
+        logger.info("[3/4] Loading C-Reactive Protein (LAB11.xpt)")
         lab11 = pd.read_sas(self.files['crp'], format='xport')
-        print(f"      Loaded {len(lab11)} records")
+        logger.info("  Loaded %d records", len(lab11))
 
-        print("\n[4/4] Loading complete blood count (LAB25.xpt) - WBC, Lymph%, MCV, RDW...")
+        logger.info("[4/4] Loading complete blood count (LAB25.xpt)")
         lab25 = pd.read_sas(self.files['cbc'], format='xport')
-        print(f"      Loaded {len(lab25)} records")
+        logger.info("  Loaded %d records", len(lab25))
 
         # Select only needed columns from each file
-        print("\n" + "-"*70)
-        print("Selecting required biomarker columns...")
-        print("-"*70)
+        logger.info("Selecting required biomarker columns")
 
         demo_subset = demo[['SEQN', 'RIDAGEYR', 'RIAGENDR']].copy()
 
@@ -100,22 +98,21 @@ class NHANESLoaderV2:
         lab25_subset = lab25[lab25_cols].copy()
 
         # Merge sequentially (inner join to keep only complete records)
-        print("\nMerging files by SEQN (participant ID)...")
+        logger.info("Merging files by SEQN (participant ID)")
         merged = demo_subset
 
-        print(f"  Starting with DEMO: {len(merged)} participants")
+        logger.info("  Starting with DEMO: %d participants", len(merged))
 
         merged = merged.merge(lab18_subset, on='SEQN', how='inner')
-        print(f"  After LAB18 merge:  {len(merged)} participants")
+        logger.info("  After LAB18 merge: %d participants", len(merged))
 
         merged = merged.merge(lab11_subset, on='SEQN', how='inner')
-        print(f"  After LAB11 merge:  {len(merged)} participants")
+        logger.info("  After LAB11 merge: %d participants", len(merged))
 
         merged = merged.merge(lab25_subset, on='SEQN', how='inner')
-        print(f"  After LAB25 merge:  {len(merged)} participants")
+        logger.info("  After LAB25 merge: %d participants", len(merged))
 
         # Rename columns to standardized names
-        print("\nRenaming columns to standardized names...")
         merged = merged.rename(columns={
             'SEQN': 'seqn',
             'RIDAGEYR': 'age',
@@ -131,9 +128,7 @@ class NHANESLoaderV2:
             'LBXWBCSI': 'wbc'           # 1000 cells/μL
         })
 
-        print("="*70)
-        print(f"OK: Successfully merged {len(merged)} participants with all biomarkers")
-        print("="*70 + "\n")
+        logger.info("Successfully merged %d participants with all biomarkers", len(merged))
 
         return merged
 
@@ -154,55 +149,36 @@ class NHANESLoaderV2:
         Returns:
             Cleaned DataFrame ready for PhenoAge calculation
         """
-        print("\n" + "="*70)
-        print("Data Cleaning Pipeline")
-        print("="*70)
-
-        print(f"\nInitial cohort: {len(df)} participants")
+        logger.info("Data Cleaning Pipeline — initial cohort: %d", len(df))
 
         # Step 1: Age filter
-        print(f"\n[1/3] Applying age filter ({age_min}-{age_max} years)...")
         df_filtered = df[(df['age'] >= age_min) & (df['age'] <= age_max)].copy()
         removed_age = len(df) - len(df_filtered)
-        print(f"      Removed {removed_age} participants outside age range")
-        print(f"      Remaining: {len(df_filtered)} participants")
+        logger.info("[1/3] Age filter (%d-%d): removed %d, remaining %d",
+                    age_min, age_max, removed_age, len(df_filtered))
 
         # Step 2: Remove missing biomarkers
-        print(f"\n[2/3] Removing participants with missing biomarkers...")
         required_cols = ['albumin', 'creatinine', 'glucose', 'crp',
                         'lymphocyte_pct', 'mcv', 'rdw', 'alp', 'wbc', 'age']
 
         df_complete = df_filtered.dropna(subset=required_cols).copy()
         removed_missing = len(df_filtered) - len(df_complete)
-        print(f"      Removed {removed_missing} participants with missing data")
-        print(f"      Remaining: {len(df_complete)} participants")
+        logger.info("[2/3] Missing biomarkers: removed %d, remaining %d",
+                    removed_missing, len(df_complete))
 
         # Step 3: Remove CRP <= 0 (cannot take log)
-        print(f"\n[3/3] Removing participants with CRP <= 0...")
         df_valid = df_complete[df_complete['crp'] > 0].copy()
         removed_crp = len(df_complete) - len(df_valid)
-        print(f"      Removed {removed_crp} participants with CRP <= 0")
-        print(f"      Remaining: {len(df_valid)} participants")
-
-        # Summary
-        print("\n" + "-"*70)
-        print("Data Quality Summary")
-        print("-"*70)
-        print(f"Initial participants:     {len(df)}")
-        print(f"After age filter:         {len(df_filtered)} (-{removed_age})")
-        print(f"After removing missing:   {len(df_complete)} (-{removed_missing})")
-        print(f"After CRP filter:         {len(df_valid)} (-{removed_crp})")
-        print(f"Final cohort:             {len(df_valid)} participants")
+        logger.info("[3/3] CRP <= 0: removed %d, remaining %d", removed_crp, len(df_valid))
 
         # Check against expected
         expected = EXPECTED_COHORT_SIZES['complete_biomarkers']
         diff = len(df_valid) - expected
         if abs(diff) < 200:
-            print(f"\nOK: Cohort size matches expected (~{expected} ± 200)")
+            logger.info("Final cohort: %d (matches expected ~%d)", len(df_valid), expected)
         else:
-            print(f"\nWARNING: Cohort size differs from expected {expected} by {diff}")
-
-        print("="*70 + "\n")
+            logger.warning("Final cohort: %d (differs from expected %d by %d)",
+                          len(df_valid), expected, diff)
 
         return df_valid
 

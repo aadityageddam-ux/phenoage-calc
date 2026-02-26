@@ -224,8 +224,12 @@ def render_tab2() -> None:
     if not all_present and not cache_exists:
         st.warning(
             "Missing required data files. Download NHANES 1999-2000 XPT files and "
-            "the mortality linkage file from the CDC NHANES website, then place them "
-            "in the `nhanes_data/` directory."
+            "the mortality linkage file, then place them in the `nhanes_data/` directory."
+        )
+        st.markdown(
+            "**Download from CDC:**  \n"
+            "[NHANES 1999-2000 Data Files](https://wwwn.cdc.gov/nchs/nhanes/continuousnhanes/default.aspx?BeginYear=1999)  \n"
+            "[Mortality Linkage Files](https://www.cdc.gov/nchs/data-linkage/mortality-public.htm)"
         )
         st.stop()
 

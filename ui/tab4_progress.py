@@ -61,8 +61,9 @@ def render_tab4() -> None:
 
     if len(history) < 2:
         st.info(
-            f"Only **{len(history)}** record(s) found for this patient. "
-            "Save at least **2 measurements** to display the trajectory chart."
+            f"Only **{len(history)}** record(s) found for Patient ID **{patient_id}**. "
+            "Submit a second calculation using the same Patient ID in the **Clinical Calculator** "
+            "tab to enable trajectory tracking."
         )
         return
 

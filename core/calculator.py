@@ -22,6 +22,7 @@ Date: 2026-02-07
 Reference: Levine ME, et al. (2018). Aging, 10(4):573-591. PMID: 29676998
 """
 
+import logging
 import numpy as np
 import pandas as pd
 from typing import Dict, Optional
@@ -255,10 +256,8 @@ class PhenoAgeCalculatorV2:
         Raises:
             ValueError: If required columns missing or CRP <= 0 detected
         """
-        print("\n" + "="*70)
-        print("PhenoAge Calculator V2 - Batch Processing")
-        print("Implementing CORRECT formula (Version B - WITH unit conversions)")
-        print("="*70)
+        logger = logging.getLogger(__name__)
+        logger.info("PhenoAge Calculator V2 - Batch Processing (Version B - WITH unit conversions)")
 
         # =====================================================================
         # Verify Required Columns
@@ -268,8 +267,7 @@ class PhenoAgeCalculatorV2:
         if missing:
             raise ValueError(f"Missing required columns: {missing}")
 
-        print(f"OK: All required biomarkers present")
-        print(f"  Processing {len(df)} participants...")
+        logger.info("All required biomarkers present — processing %d participants", len(df))
 
         # Create working copy
         df_result = df.copy()
@@ -293,16 +291,12 @@ class PhenoAgeCalculatorV2:
         # Guard against CRP <= 0 before log transformation (floor to prevent NaN)
         invalid_crp = (df_result['crp_mg_L'] <= 0).sum()
         if invalid_crp > 0:
-            print(f"Warning: {invalid_crp} participants have CRP <= 0, clamped to 0.001 mg/L")
+            logger.warning("%d participants have CRP <= 0, clamped to 0.001 mg/L", invalid_crp)
         df_result['crp_mg_L'] = df_result['crp_mg_L'].clip(lower=0.001)
 
         df_result['log_crp'] = np.log(df_result['crp_mg_L'])
 
-        print(f"OK: Unit conversions complete:")
-        print(f"  - Albumin: g/dL -> g/L (x10)")
-        print(f"  - Creatinine: mg/dL -> umol/L (x88.4)")
-        print(f"  - Glucose: mg/dL -> mmol/L (x0.0555)")
-        print(f"  - CRP: mg/dL -> mg/L (x10), then ln()")
+        logger.info("Unit conversions complete (Albumin x10, Creatinine x88.4, Glucose x0.0555, CRP x10+ln)")
 
         # =====================================================================
         # STEP 1: Calculate Linear Predictor (xb)
@@ -323,9 +317,8 @@ class PhenoAgeCalculatorV2:
             self.coef['age'] * df_result['age']
         )
 
-        print(f"OK: Linear predictor (xb) calculated")
-        print(f"  Mean xb: {df_result['xb'].mean():.4f}")
-        print(f"  xb range: [{df_result['xb'].min():.4f}, {df_result['xb'].max():.4f}]")
+        logger.info("Linear predictor (xb) — mean: %.4f, range: [%.4f, %.4f]",
+                    df_result['xb'].mean(), df_result['xb'].min(), df_result['xb'].max())
 
         # =====================================================================
         # STEP 2: Calculate 10-Year Mortality Probability
@@ -338,8 +331,7 @@ class PhenoAgeCalculatorV2:
         # Cap at 0.9999
         df_result['mort_score'] = np.minimum(df_result['mort_score'], 0.9999)
 
-        print(f"OK: Mortality scores calculated")
-        print(f"  Mean mort_score: {df_result['mort_score'].mean():.4f}")
+        logger.info("Mortality scores — mean: %.4f", df_result['mort_score'].mean())
 
         # =====================================================================
         # STEP 3: Transform to PhenoAge
@@ -360,18 +352,12 @@ class PhenoAgeCalculatorV2:
         # Summary Statistics
         # =====================================================================
 
-        print("\n" + "-"*70)
-        print("SUMMARY STATISTICS")
-        print("-"*70)
-        print(f"PhenoAge:")
-        print(f"  Mean: {df_result['phenoage'].mean():.2f} years")
-        print(f"  SD:   {df_result['phenoage'].std():.2f} years")
-        print(f"  Range: [{df_result['phenoage'].min():.2f}, {df_result['phenoage'].max():.2f}]")
-        print(f"\nAge Acceleration:")
-        print(f"  Mean: {df_result['delta_age'].mean():.2f} years")
-        print(f"  SD:   {df_result['delta_age'].std():.2f} years")
-        print(f"  Range: [{df_result['delta_age'].min():.2f}, {df_result['delta_age'].max():.2f}]")
-        print("="*70 + "\n")
+        logger.info("PhenoAge — mean: %.2f, SD: %.2f, range: [%.2f, %.2f]",
+                    df_result['phenoage'].mean(), df_result['phenoage'].std(),
+                    df_result['phenoage'].min(), df_result['phenoage'].max())
+        logger.info("Age Acceleration — mean: %.2f, SD: %.2f, range: [%.2f, %.2f]",
+                    df_result['delta_age'].mean(), df_result['delta_age'].std(),
+                    df_result['delta_age'].min(), df_result['delta_age'].max())
 
         return df_result
 
@@ -390,9 +376,8 @@ class PhenoAgeCalculatorV2:
             from core.constants import REFERENCE_RANGES
             reference_ranges = REFERENCE_RANGES
 
-        print("\n" + "="*70)
-        print("Biomarker Validation Against Reference Ranges")
-        print("="*70)
+        logger = logging.getLogger(__name__)
+        logger.info("Biomarker Validation Against Reference Ranges")
 
         df_result = df.copy()
 
@@ -404,9 +389,8 @@ class PhenoAgeCalculatorV2:
                 pct_flagged = (n_flagged / len(df_result)) * 100
 
                 if n_flagged > 0:
-                    print(f"  {biomarker:20s}: {n_flagged:5d} ({pct_flagged:5.1f}%) outside [{low}, {high}]")
-
-        print("="*70 + "\n")
+                    logger.info("  %s: %d (%.1f%%) outside [%s, %s]",
+                                biomarker, n_flagged, pct_flagged, low, high)
 
         return df_result
 

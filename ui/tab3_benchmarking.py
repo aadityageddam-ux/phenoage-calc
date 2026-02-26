@@ -123,10 +123,11 @@ def _build_histogram(
     )
 
     # Patient vertical line
+    delta_label = f"You ({patient_delta:+.1f} yrs)"
     fig.add_vline(
         x=patient_delta,
         line=dict(color="red", width=2, dash="dash"),
-        annotation_text="You",
+        annotation_text=delta_label,
         annotation_position="top right",
         annotation_font=dict(color="red", size=13),
     )

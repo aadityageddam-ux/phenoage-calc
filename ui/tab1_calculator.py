@@ -21,15 +21,15 @@ matplotlib.use("Agg")  # Non-interactive backend for Streamlit
 # ---------------------------------------------------------------------------
 
 BIOMARKER_SPECS = [
-    {"key": "albumin",        "label": "Albumin",            "unit": "g/dL",   "min": 1.0, "max": 7.0,  "step": 0.1, "default": 4.0,  "fmt": "%.1f"},
-    {"key": "creatinine",     "label": "Creatinine",         "unit": "mg/dL",  "min": 0.1, "max": 5.0,  "step": 0.1, "default": 1.0,  "fmt": "%.1f"},
-    {"key": "glucose",        "label": "Glucose",            "unit": "mg/dL",  "min": 50,  "max": 500,  "step": 1,   "default": 90,   "fmt": "%.0f"},
-    {"key": "crp",            "label": "C-Reactive Protein", "unit": "mg/L",   "min": 0.1, "max": 50.0, "step": 0.1, "default": 1.0,  "fmt": "%.1f"},
-    {"key": "lymphocyte_pct", "label": "Lymphocyte %",       "unit": "%",      "min": 5.0, "max": 50.0, "step": 0.5, "default": 30.0, "fmt": "%.1f"},
-    {"key": "mcv",            "label": "MCV",                "unit": "fL",     "min": 60,  "max": 120,  "step": 1,   "default": 90,   "fmt": "%.0f"},
-    {"key": "rdw",            "label": "RDW",                "unit": "%",      "min": 10.0, "max": 25.0, "step": 0.1, "default": 13.0, "fmt": "%.1f"},
-    {"key": "alp",            "label": "ALP",                "unit": "U/L",    "min": 10,  "max": 500,  "step": 1,   "default": 70,   "fmt": "%.0f"},
-    {"key": "wbc",            "label": "WBC",                "unit": "10³/μL", "min": 1.0, "max": 30.0, "step": 0.1, "default": 7.0,  "fmt": "%.1f"},
+    {"key": "albumin",        "label": "Albumin",                      "unit": "g/dL",   "min": 1.0, "max": 7.0,  "step": 0.1, "default": 4.0,  "fmt": "%.1f", "ref": "3.5\u20135.5"},
+    {"key": "creatinine",     "label": "Creatinine",                   "unit": "mg/dL",  "min": 0.1, "max": 5.0,  "step": 0.1, "default": 1.0,  "fmt": "%.1f", "ref": "0.7\u20131.3"},
+    {"key": "glucose",        "label": "Glucose",                      "unit": "mg/dL",  "min": 50,  "max": 500,  "step": 1,   "default": 90,   "fmt": "%.0f", "ref": "70\u2013100"},
+    {"key": "crp",            "label": "C-Reactive Protein",           "unit": "mg/L",   "min": 0.1, "max": 50.0, "step": 0.1, "default": 1.0,  "fmt": "%.1f", "ref": "0.0\u20133.0"},
+    {"key": "lymphocyte_pct", "label": "Lymphocyte %",                 "unit": "%",      "min": 5.0, "max": 50.0, "step": 0.5, "default": 30.0, "fmt": "%.1f", "ref": "20\u201340"},
+    {"key": "mcv",            "label": "MCV",                          "unit": "fL",     "min": 60,  "max": 120,  "step": 1,   "default": 90,   "fmt": "%.0f", "ref": "80\u2013100"},
+    {"key": "rdw",            "label": "RDW",                          "unit": "%",      "min": 10.0, "max": 25.0, "step": 0.1, "default": 13.0, "fmt": "%.1f", "ref": "11.5\u201314.5"},
+    {"key": "alp",            "label": "Alkaline Phosphatase (ALP)",   "unit": "U/L",    "min": 10,  "max": 500,  "step": 1,   "default": 70,   "fmt": "%.0f", "ref": "30\u2013120"},
+    {"key": "wbc",            "label": "WBC",                          "unit": "10\u00b3/\u03bcL", "min": 1.0, "max": 30.0, "step": 0.1, "default": 7.0,  "fmt": "%.1f", "ref": "4.5\u201311.0"},
 ]
 
 ACCELERATION_FAST_THRESHOLD = 5.0
@@ -150,7 +150,8 @@ def _render_input_form():
     st.subheader("Patient Information")
     col_pid, col_age, _ = st.columns([2, 2, 6])
     with col_pid:
-        patient_id = st.number_input("Patient ID", min_value=1, value=1, step=1)
+        patient_id = st.number_input("Patient ID", min_value=1, value=1, step=1,
+                                     help="Local identifier only \u2014 stored as SHA-256 hash")
     with col_age:
         age = st.number_input("Chronological Age (years)", min_value=20, max_value=90,
                               value=50, step=1)
@@ -170,6 +171,7 @@ def _render_input_form():
                 step=float(spec["step"]),
                 format=spec["fmt"],
                 key=f"input_{spec['key']}",
+                help=f"Normal range: {spec['ref']} {spec['unit']}",
             )
             ui_biomarkers[spec["key"]] = val
 

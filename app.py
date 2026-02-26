@@ -7,7 +7,11 @@ Usage:
     streamlit run app.py
 """
 
+import logging
 import streamlit as st
+
+# Silence batch-processing debug output in the terminal
+logging.basicConfig(level=logging.WARNING)
 
 # ---------------------------------------------------------------------------
 # Page configuration (must be first Streamlit call)
