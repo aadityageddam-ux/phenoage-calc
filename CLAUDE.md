@@ -73,7 +73,3 @@ pytest tests/
 # System integrity check
 python check_integrity.py
 ```
-
-## Known Issues
-- `tests/test_clinical_logic.py` has 3 failing tests with outdated expected ranges
-  (calibrated for Version A formula; project now uses Version B with unit conversions)

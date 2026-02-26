@@ -5,8 +5,8 @@ This module provides the mathematically correct implementation of the Levine 201
 PhenoAge algorithm, following the specification in PhenoAge_Core_ImplementationV2.docx
 
 Key Features:
-- NO unit conversions except CRP (mg/dL → mg/L ×10)
-- Coefficients applied to ORIGINAL NHANES units
+- WITH unit conversions (Albumin g/dL→g/L, Creatinine mg/dL→μmol/L, Glucose mg/dL→mmol/L, CRP mg/dL→mg/L)
+- Coefficients applied to CONVERTED units per Levine 2018
 - Scientifically validated against Levine 2018 benchmarks
 """
 
