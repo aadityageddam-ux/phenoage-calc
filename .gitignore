@@ -40,9 +40,16 @@ htmlcov/
 .tox/
 
 # Secure storage - CRITICAL: DO NOT COMMIT THESE FILES
-.env                           # Contains encryption keys
-patient_data/*.xlsx            # Encrypted patient data files
-patient_data/*.csv             # Audit log files (may contain hashed IDs)
+# (previous version had these as trailing inline comments, which git does NOT
+# support in .gitignore -- it silently made the whole line part of the pattern,
+# so none of these were ever actually ignored despite the warning)
+.env
+patient_data/*.xlsx
+patient_data/*.csv
+patient_data/
+.git-OLD-CONTAINS-LEAKED-KEY/
+.git-STUCK-ATTEMPT-2/
+.claude/
 
 # NHANES data (large files, downloaded separately)
 nhanes_data/*.XPT
@@ -54,3 +61,7 @@ outputs/
 *.png
 *.jpg
 *.pdf
+
+.git-OLD-CONTAINS-LEAKED-KEY/
+.git-STUCK-ATTEMPT-2/
+.claude/
