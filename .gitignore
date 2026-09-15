@@ -65,3 +65,6 @@ outputs/
 .git-OLD-CONTAINS-LEAKED-KEY/
 .git-STUCK-ATTEMPT-2/
 .claude/
+
+# Local verification logs
+*.log
