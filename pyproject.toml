@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phenoage-calc"
+version = "3.0.0"
+description = "Focused clinical Phenotypic Age calculation library"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26,<3", "pandas>=2.2,<4"]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10", "build>=1,<2"]
+
+[project.urls]
+Repository = "https://github.com/aadityageddam-ux/phenoage-calc"
+"Web interface" = "https://labage.vercel.app/"
+
+[tool.setuptools]
+packages = ["phenoage_calc", "core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

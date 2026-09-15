@@ -1,132 +1,94 @@
-# PhenoAge Bio-Age Logic Engine V2
+# phenoage-calc
 
-## Executive Summary
+A focused Python library for **clinical Phenotypic Age**, with single-row and pandas batch calculations. Use [LabAge](https://labage.vercel.app/) for the web interface and its NHANES comparisons.
 
-This project implements the Levine 2018 PhenoAge algorithm with scientific rigor to validate the existing `bio-age-engine` implementation.
+This library evaluates a published statistical formula. It does not compute DNA methylation PhenoAge, establish individual biological aging rate, or provide a clinical prognosis. No population reference data or patient storage is included.
 
-### Critical Discovery
+## Install
 
-**Initial Hypothesis (INCORRECT):** The specification document suggested coefficients should be applied to original NHANES units (g/dL, mg/dL) without unit conversions.
+Python 3.11 or later:
 
-**Test Results:**
-- Version A (NO conversions): PhenoAge = 108.5 years for healthy 35-year-old ❌ **BIOLOGICALLY IMPLAUSIBLE**
-- Version B (WITH conversions): PhenoAge = 29.3 years for healthy 35-year-old ✓ **BIOLOGICALLY PLAUSIBLE**
-
-**Conclusion:** The Levine 2018 coefficients ARE calibrated on CONVERTED units (g/L, mmol/L, μmol/L). The existing bio-age-engine implementation is **CORRECT**.
-
-**Action Taken:** Updated [core/calculator.py](phenoage-engine/core/calculator.py) to Version B (WITH unit conversions). Quick test now produces **PhenoAge = 29.3 years** for a healthy 35-year-old (biologically plausible!).
-
-## Project Structure
-
-```
-phenoage-engine/
-├── core/
-│   ├── constants.py          # All Levine 2018 constants with doc references
-│   ├── calculator.py         # Version B: WITH unit conversions ✓ CORRECT
-│   ├── calculator_v2b.py     # Alternative implementation for testing
-│   └── __init__.py
-│
-├── data/
-│   ├── nhanes_loader.py      # Load and merge NHANES XPT files ✓ COMPLETE
-│   ├── mortality_loader.py   # Load mortality linkage file ✓ COMPLETE
-│   └── __init__.py
-│
-├── analysis/
-│   ├── population_validation.py  # Cox regression, HR calculation ✓ COMPLETE
-│   └── __init__.py
-│
-├── validation/               # (For future unit tests)
-├── outputs/                  # Generated reports and datasets
-├── tests/                    # (For future pytest tests)
-│
-├── run_full_validation.py    # Master orchestration script ✓ COMPLETE
-├── run_validation_fixed.py   # Unicode-safe version
-├── test_quick.py             # Quick single-patient test
-├── requirements.txt          # Python dependencies
-└── README.md                 # This file
+```sh
+git clone https://github.com/aadityageddam-ux/phenoage-calc.git
+cd phenoage-calc
+python -m pip install .
 ```
 
-## Next Steps
+Version 3.0.0 identifies this source cleanup; no PyPI publication is implied.
 
-1. **Validate on NHANES Data:** Run both versions on full NHANES 1999-2000 dataset and calculate Hazard Ratios. The version producing HR ≈ 1.08 (Levine 2018 benchmark) is correct.
+## Single calculation
 
-2. **Update Implementation:** Once validated, update core/calculator.py to use the correct approach (likely Version B with conversions).
+```python
+from phenoage_calc import calculate_phenoage_single
 
-3. **Complete Validation Suite:** Implement:
-   - data/nhanes_loader.py (load raw XPT files)
-   - data/mortality_loader.py (load mortality data)
-   - analysis/population_validation.py (Cox regression, HR calculation)
-   - validation/compare_implementations.py (compare with bio-age-engine)
-
-4. **Generate Reports:**
-   - population_validation_report.txt (HR validation)
-   - validation_report.txt (old vs new comparison)
-
-## Installation
-
-```bash
-cd phenoage-engine
-pip install -r requirements.txt
+result = calculate_phenoage_single(
+    albumin=4.2, creatinine=0.9, glucose=95, crp=0.1,
+    lymphocyte_pct=30, mcv=90, rdw=13, alp=65, wbc=6.5, age=50,
+    crp_unit="mg/dL",
+)
+print(round(result["phenoage"], 4))  # 43.7036
 ```
 
-## Quick Test
+This is a synthetic input fixture, not a patient assessment.
 
-```bash
-python test_quick.py
+| Input | Unit |
+| --- | --- |
+| albumin | g/dL |
+| creatinine, glucose | mg/dL |
+| crp | **mg/dL by default**, or explicit `crp_unit="mg/L"` |
+| lymphocyte_pct, rdw | % |
+| mcv | fL |
+| alp | U/L |
+| wbc | thousands/µL |
+| age | years |
+
+For the same CRP value reported as 1 mg/L, pass `crp=1, crp_unit="mg/L"`. Both routes take the natural logarithm of **0.1 mg/dL**. Units are never inferred from magnitude.
+
+## Batch calculation
+
+```python
+import pandas as pd
+from phenoage_calc import PhenoAgeCalculator
+
+df = pd.DataFrame([dict(
+    albumin=4.2, creatinine=0.9, glucose=95, crp=1,
+    lymphocyte_pct=30, mcv=90, rdw=13, alp=65, wbc=6.5, age=50,
+)], index=["example-a"])
+output = PhenoAgeCalculator().calculate_batch(df, crp_unit="mg/L")
+print(output[["phenoage", "delta_age"]])
 ```
 
-Note: Currently fails assertion because Version A produces unreasonable results.
+The input is not modified. Index, order and extra columns are preserved. A batch uses one CRP unit for every row; normalize mixed-unit inputs explicitly before calling. Invalid rows reject the whole batch with their position and index. No values are imputed or rows silently discarded.
 
-## Scientific Validation Criteria
+All inputs must be finite numbers, and CRP must be positive. These are mathematical checks, not clinical reference ranges. Users must establish appropriate populations, assays, units and study design separately.
 
-- **Expected Hazard Ratio:** 1.06-1.10 per 1-year PhenoAge increase
-- **Expected C-statistic:** 0.73-0.82
-- **P-value:** < 0.001
+## Formula and outputs
 
-## Key References
+Coefficients and constants follow [BioAge's original clinical formula](https://github.com/dayoonkwon/BioAge/blob/master/R/phenoage_calc.R), associated with [Levine et al. 2018](https://pmc.ncbi.nlm.nih.gov/articles/PMC5940111/). Albumin is multiplied by 10, creatinine by 88.4017, and glucose by 0.0555 before coefficients are applied. CRP is logged in mg/dL.
 
-- **Specification:** PhenoAge_Core_ImplementationV2.docx
-- **Paper:** Levine ME, et al. (2018). Aging, 10(4):573-591. PMID: 29676998
-- **NHANES:** 1999-2000 cycle
+The age transform uses the 0.090165 denominator and an algebraically equivalent log-hazard expression to avoid saturation. Results are not capped to a plausible age range.
 
-## Unit Conversion Details
+- `phenoage`: calculated clinical Phenotypic Age, in years.
+- `delta_age`: raw result minus chronological age; **not residualized age acceleration**.
+- `xb`: model linear predictor.
+- `mort_score`: historical model intermediate retained for compatibility; not a calibrated individual prognosis. It may round to one at extreme inputs without capping the age result.
+- `intermediate_values`: unit conversions and log CRP, for auditing the calculation.
 
-### Version A (NO conversions - WRONG):
-- Albumin: g/dL (no conversion)
-- Creatinine: mg/dL (no conversion)
-- Glucose: mg/dL (no conversion)
-- CRP: mg/dL → mg/L (×10), then ln
-- Result: PhenoAge way too high (108 years for healthy 35-year-old)
+## Migration and scope
 
-### Version B (WITH conversions - CORRECT):
-- Albumin: g/dL → g/L (×10)
-- Creatinine: mg/dL → μmol/L (×88.4)
-- Glucose: mg/dL → mmol/L (×0.0555)
-- CRP: mg/dL → mg/L (×10), then ln
-- Result: Biologically plausible results
+The Streamlit app, storage/audit modules, longitudinal views, unverified NHANES loaders, population-validation scripts and obsolete generated specifications were removed from the current tree. They remain in Git history. Existing files outside Git, including any locally stored records, are not migrated or deleted by installing this library.
 
-## Why the Confusion?
+`core.calculator.PhenoAgeCalculatorV2` and `core.calculator_v2b.PhenoAgeCalculatorV2B` remain compatibility imports. New code should use `phenoage_calc`. The old default CRP input remains mg/dL, but the incorrect ×10-before-log behavior is fixed. Recompute old results; their values will change. Old normal-range flags and claimed validation thresholds were withdrawn.
 
-The specification document (lines 108-126) lists coefficients with original NHANES units in comments (e.g., "albumin (g/dL)"), which could be interpreted as "apply coefficient to g/dL values." However, the coefficients themselves were fit on CONVERTED values during Levine's original analysis.
+No license grant is asserted here; this repository currently has no license file.
 
-## Status
+## Verify
 
-- [x] Directory structure created
-- [x] Constants module with specification references
-- [x] Calculator updated to Version B (WITH unit conversions) - **NOW CORRECT**
-- [x] Quick test demonstrating Version B produces biologically plausible results
-- [x] Requirements.txt with dependencies
-- [x] NHANES data loader (nhanes_loader.py) - **COMPLETED**
-- [x] Mortality data loader (mortality_loader.py) - **COMPLETED**
-- [x] Population validation module (population_validation.py) - **COMPLETED**
-- [x] Full validation orchestration script (run_full_validation.py) - **COMPLETED**
-- [ ] Run validation on full NHANES dataset (requires raw XPT files)
-- [ ] Generate final validation reports with actual HR
+```sh
+python -m pip install -e ".[test]"
+python -m pytest
+python -m build
+python examples/single_and_batch.py
+```
 
-## Author
-
-Claude Code (2026-02-07)
-
-## License
-
-For research and educational use. Based on Levine 2018 PhenoAge algorithm.
+Tests check independent numerical fixtures, CRP unit equivalence, single/batch agreement, malformed input rejection, row preservation and numerical extremes. They do not establish clinical validity. The optional R script in `tests/reference_formula.R` reproduces the fixed fixtures without importing the Python implementation.
