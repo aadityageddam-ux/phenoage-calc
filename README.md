@@ -80,7 +80,7 @@ The Streamlit app, storage/audit modules, longitudinal views, unverified NHANES 
 
 `core.calculator.PhenoAgeCalculatorV2` and `core.calculator_v2b.PhenoAgeCalculatorV2B` remain compatibility imports. New code should use `phenoage_calc`. The old default CRP input remains mg/dL, but the incorrect ×10-before-log behavior is fixed. Recompute old results; their values will change. Old normal-range flags and claimed validation thresholds were withdrawn.
 
-No license grant is asserted here; this repository currently has no license file.
+Released under the [MIT License](LICENSE).
 
 ## Verify
 
